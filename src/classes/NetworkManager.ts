@@ -1,77 +1,65 @@
-import net from "net";
+import dgram from "dgram";
 import Node from "../types/Node";
 import NodeConfig from "../types/NodeConfig";
 import Call from "../classes/Call";
 
+// the network manager is responsible for all
+// underlying network communication
+
 export default class NetworkManager {
 
-	client: any;
-	server: any;
+	socket: any;
 	nodes: Node[];
 	nodeConfig: NodeConfig;
 
 	// callbacks
-	connectionCallback: Function;
-	closeCallback: Function;
+	listeningCallback: Function;
+	messageCallback: Function;
+	errorCallback: Function;
 
 	constructor(config: NodeConfig) {
 
 		this.nodeConfig = config;
-		this.nodes = [];
+		if(this.nodeConfig.alwaysActiveNodes)
+			this.nodes = this.nodeConfig.alwaysActiveNodes;
+		else
+			this.nodes = [];
 
-		this.connectionCallback = () => {};
-		this.closeCallback = () => {};
+		this.listeningCallback = () => {};
+		this.messageCallback = () => {};
+		this.errorCallback = () => {};
 
 	}
 
 	public init(callback: Function) {
 
-		this.client = new net.Socket();
+		// create the socket
+		this.socket= dgram.createSocket("udp4");
 
-		if(this.nodeConfig.alwaysActiveNodes) {
-
-			this.nodeConfig.alwaysActiveNodes.map((node) => {
-
-				const addr = node.split(":");
-
-				// connect to the node
-				this.client.connect(addr[1], addr[0]);
-				// authenticate
-				const authCall: Call = new Call({
-					name: "auth",
-					caller: this.nodeConfig.host + ":" + this.nodeConfig.port,
-					extra: this.nodeConfig.networkAuthentication
-				});
-				this.client.write(authCall.toString());
-			});
-
-		}
-
-		// create the server and listen with the config provided
-		this.server = net.createServer();
-		this.server.listen(this.nodeConfig.port, this.nodeConfig.host);
-
-		// when a node requests connection
-		this.server.on("connection", (socket: any) => {
-			const n: Node = {
-				socket,
-				lastTimeSeen: new Date(),
-				authenticated: false
-			};
-			// add to the list of active nodes
-			this.nodes.push(n);
-			// call the connection callback defined by the developer
-			this.connectionCallback(n);
+		// socket error event
+		this.socket.on("error", (err: any) => {
+			this.onError(err);
 		});
 
-		// when a node closes or loses connection
-		this.server.on("close", (socket: any) => {
-			// remove this socket from the node list
-			this.nodes.filter((node) => !node.socket.equals(socket));
-			// call the callback defined by the developer
-			this.closeCallback(socket);
+		// socket message event
+		this.socket.on("message", (msg: any, rinfo: any) => {
+			this.handleNode(rinfo.address, rinfo.port);
+			this.onMessage(msg);
 		});
 
+		// socket listening event
+		this.socket.on("listening", () => {
+			this.onListening();
+		});
+
+		// bind socket to address and port
+		this.socket.bind({
+			address: this.nodeConfig.host,
+			port: this.nodeConfig.port,
+			exclusive: false
+		});
+
+		this.announceAlive();
 
 		if(callback)
 			callback(this.nodeConfig);
@@ -82,18 +70,81 @@ export default class NetworkManager {
 
 		this.nodes.map((node) => {
 
-			if(node.authenticated)
-				node.socket.write(call.toString());
-
+			// if(node.authenticated)
+				this.socket.send(call.toString(), node.port, node.address);
+			
 		});
 	}
 
-	public onConnection(callback: Function) {
-		this.connectionCallback = callback;
+	// announce that we are alive
+	announceAlive() {
+
+		const call: Call = new Call({
+			name: "alive"
+		});
+
+		this.broadcastCall(call);
 	}
 
-	public onConnectionClose(callback: Function) {
-		this.closeCallback = callback;
+	// call the listening callback
+	onListening() {
+		this.listeningCallback();
+	}
+
+	// call the error callback
+	onError(err: any) {
+		this.errorCallback(err);
+	}
+
+	// do the known node list management
+	handleNode(address: string, port: number) {
+
+		let nodeIsKnown: boolean = false;
+
+		// handle remote info
+		this.nodes.map((node: Node) => {
+			
+			if(node.address == address && node.port == port) {
+
+				nodeIsKnown = true;
+
+				// update node last time seen
+				node.lastTimeSeen = new Date();
+
+			}
+
+		});
+
+		if(!nodeIsKnown) {
+
+			const node: Node = {
+				address: address,
+				port: port,
+				lastTimeSeen: new Date(),
+				authenticated: false
+			};
+
+			this.nodes.push(node);
+
+		}
+
+		// sort by descending last time seen
+		this.nodes.sort((a: Node, b: Node) => {
+
+			if(a.lastTimeSeen && b.lastTimeSeen)
+				return b.lastTimeSeen.getTime() - a.lastTimeSeen.getTime();
+			
+			return 0;
+
+		});
+
+	}
+
+	// handle the received call add call the respective callback
+	onMessage(msg: string) {
+
+
+		this.messageCallback(msg);
 	}
 
 }

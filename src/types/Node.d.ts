@@ -1,8 +1,9 @@
 
 export default interface Node {
 
-	socket: any;
-	lastTimeSeen: Date;
-	authenticated: boolean;
+	address: string;
+	port: number;
+	lastTimeSeen?: Date = new Date();
+	authenticated?: boolean = false;
 
 }

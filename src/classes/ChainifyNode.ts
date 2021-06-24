@@ -3,6 +3,8 @@ import NetworkManager from "../classes/NetworkManager";
 import Call from "../classes/Call";
 import { v4 as uuidv4 } from "uuid";
 
+// this is the main class the developer interacts with
+
 export default class ChainifyNode {
 
 	id: string;
@@ -19,6 +21,7 @@ export default class ChainifyNode {
 
 	public init(callback: Function) {
 
+		// initialize all network related operations
 		this.networkManager.init(callback);
 
 	}
@@ -26,31 +29,43 @@ export default class ChainifyNode {
 	// get a item from the network
 	public getItem(key: string) {
 
+		// create the call
+		const call: Call = new Call({
+			name: "get",
+			extra: {
+				key
+			}
+		});
+
+		// broadcast the call
+		this.networkManager.broadcastCall(call);
 	}
 
 	// set a item in the network
 	public setItem(key: string, value: string) {
 
+		// create the call
 		const call: Call = new Call({
 			name: "set",
-			caller: `${this.config.host}:${this.config.port}`,
 			extra: {
 				key,
 				value
 			}
 		});
 
+		// broadcast the call
 		this.networkManager.broadcastCall(call);
 	}
 
-	// callback to when the server receives a connection
-	public onConnection(callback: Function) {
-		this.networkManager.onConnection(callback);
+	// event called when the socket starts listening
+	public onListening(callback: Function) {
+		this.networkManager.listeningCallback = callback;
 	}
 
-	// callback to when the server loses a connection
-	public onConnectionClose(callback: Function) {
-		this.networkManager.onConnectionClose(callback);
+	// event called when a message is received 
+	// (this is only for developer usage, all the management is underlying)
+	public onMessage(callback: Function) {
+		this.networkManager.messageCallback = callback;
 	}
 
 }
