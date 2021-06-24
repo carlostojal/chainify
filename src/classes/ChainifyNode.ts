@@ -27,7 +27,7 @@ export default class ChainifyNode {
 	}
 
 	// get a item from the network
-	public getItem(key: string) {
+	public getItem(key: string, callback: Function) {
 
 		// create the call
 		const call: Call = new Call({
@@ -42,7 +42,7 @@ export default class ChainifyNode {
 	}
 
 	// set a item in the network
-	public setItem(key: string, value: string) {
+	public setItem(key: string, value: string, callback: Function) {
 
 		// create the call
 		const call: Call = new Call({
@@ -64,7 +64,7 @@ export default class ChainifyNode {
 
 	// event called when a message is received 
 	// (this is only for developer usage, all the management is underlying)
-	public onMessage(callback: Function) {
+	public onCall(callback: Function) {
 		this.networkManager.messageCallback = callback;
 	}
 

@@ -37,30 +37,34 @@ export default class Call implements CallArgs {
 			oaepHash: "sha256"
 		}, data);
 
-		return decrypted.toString();
+		return JSON.parse(decrypted.toString());
 	}
 
 	// convert the call to string format and encrypt it with the key
 	public toString(encrypt: boolean = true) {
 
-		const json: string = JSON.stringify(this);
+		let out: any = JSON.stringify(this);
 
-		const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
-			modulusLength: 2048
-		});
+		if(encrypt) {
+			const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
+				modulusLength: 2048
+			});
 
-		const encrypted = crypto.publicEncrypt({
-			key: publicKey,
-			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-			oaepHash: "sha256"
-		}, Buffer.from(json));
+			out = crypto.publicEncrypt({
+				key: publicKey,
+				padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+				oaepHash: "sha256"
+			}, Buffer.from(out));
 
-		// console.log(privateKey);
-		// console.log(publicKey);
+			out = out.toString("base64");
 
-		// console.log(encrypted.toString("base64"));
+			// console.log(privateKey);
+			// console.log(publicKey);
 
-		return encrypted.toString("base64");
+			// console.log(encrypted.toString("base64"));
+		}
+
+		return out;
 
 	}
 }

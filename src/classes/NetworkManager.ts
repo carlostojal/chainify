@@ -1,6 +1,7 @@
 import dgram from "dgram";
 import Node from "../types/Node";
 import NodeConfig from "../types/NodeConfig";
+import NetworkAuthentication from "../types/NetworkAuthentication";
 import Call from "../classes/Call";
 
 // the network manager is responsible for all
@@ -43,8 +44,7 @@ export default class NetworkManager {
 
 		// socket message event
 		this.socket.on("message", (msg: any, rinfo: any) => {
-			this.handleNode(rinfo.address, rinfo.port);
-			this.onMessage(msg);
+			this.onMessage(msg, rinfo.address, rinfo.port);
 		});
 
 		// socket listening event
@@ -60,6 +60,7 @@ export default class NetworkManager {
 		});
 
 		this.announceAlive();
+		this.announceAuth();
 
 		if(callback)
 			callback(this.nodeConfig);
@@ -71,7 +72,7 @@ export default class NetworkManager {
 		this.nodes.map((node) => {
 
 			// if(node.authenticated)
-				this.socket.send(call.toString(), node.port, node.address);
+				this.socket.send(call.toString(false), node.port, node.address);
 			
 		});
 	}
@@ -81,6 +82,17 @@ export default class NetworkManager {
 
 		const call: Call = new Call({
 			name: "alive"
+		});
+
+		this.broadcastCall(call);
+	}
+
+	// send an auth call to all nodes
+	announceAuth() {
+
+		const call: Call = new Call({
+			name: "auth",
+			extra: this.nodeConfig.networkAuthentication
 		});
 
 		this.broadcastCall(call);
@@ -97,10 +109,25 @@ export default class NetworkManager {
 	}
 
 	// do the known node list management
-	handleNode(address: string, port: number) {
+	handleNode(call: Call, address: string, port: number) {
 
 		let nodeIsKnown: boolean = false;
 
+		let isAuthAndVerified = false;
+		if(call.name == "auth") {
+
+			try {
+				const auth: NetworkAuthentication = call.extra;
+				isAuthAndVerified = call.name == "auth" &&
+					auth.name == this.nodeConfig.networkAuthentication.name &&
+					auth.secret == this.nodeConfig.networkAuthentication.secret;
+
+			} catch(e) {
+
+			}
+
+		}
+			
 		// handle remote info
 		this.nodes.map((node: Node) => {
 			
@@ -110,6 +137,7 @@ export default class NetworkManager {
 
 				// update node last time seen
 				node.lastTimeSeen = new Date();
+				node.authenticated = isAuthAndVerified;
 
 			}
 
@@ -121,7 +149,7 @@ export default class NetworkManager {
 				address: address,
 				port: port,
 				lastTimeSeen: new Date(),
-				authenticated: false
+				authenticated: isAuthAndVerified
 			};
 
 			this.nodes.push(node);
@@ -141,10 +169,17 @@ export default class NetworkManager {
 	}
 
 	// handle the received call add call the respective callback
-	onMessage(msg: string) {
+	onMessage(msg: string, address: string, port: number) {
 
+		const call: Call = JSON.parse(msg);
 
-		this.messageCallback(msg);
+		this.handleNode(call, address, port);
+
+		switch(call.name) {
+			
+		}
+
+		this.messageCallback(call);
 	}
 
 }
