@@ -51,7 +51,7 @@ node.getItem("users", (users) => {
 
 - ### ```networkAuthentication```
 	Each developer can create a network of nodes. The network is like your private distributed key-value storage.
-	Each network has a unique name. If you provided always active nodes, the node will use this configuration to connect to them. If you didn't, this value will still be used for authentication from other nodes.
+	Each network has an unique name. If you provided always active nodes, the node will use this configuration to connect to them. If you didn't, this value will still be used for authentication from other nodes.
 
 - ### ```rsaKeyPair```
 	As the name says, this defines the RSA key pair to be used.
