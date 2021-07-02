@@ -4,6 +4,7 @@ import Node from "../types/Node";
 
 export default interface NodeConfig {
 
+	id: string;
 	networkAuthentication: NetworkAuthentication,
 	rsaKeyPair: KeyPair,
 	host: string,

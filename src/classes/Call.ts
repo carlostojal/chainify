@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
+import KeyPair from "../types/KeyPair";
 
 // the call is the basic data structure used for transmission on the network
 // data encryption between parts is implemented here
@@ -17,7 +18,7 @@ export default class Call implements CallArgs {
 	time: Date; // time of the call creation
 	parent?: Call | null; // call that originated the current
 	name: "get" | "set" | "auth" | "alive"; // available calls
-	extra?: any; // extra data
+	extra?: any | null; // extra data
 
 	constructor(args: CallArgs) {
 		
@@ -29,10 +30,10 @@ export default class Call implements CallArgs {
 
 	}
 
-	public static from(data: any) {
+	public static from(data: any, keyPair: KeyPair) {
 
 		const decrypted = crypto.privateDecrypt({
-			key: "dasdsadgweaser",
+			key: keyPair.private,
 			padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
 			oaepHash: "sha256"
 		}, data);
@@ -41,17 +42,14 @@ export default class Call implements CallArgs {
 	}
 
 	// convert the call to string format and encrypt it with the key
-	public toString(encrypt: boolean = true) {
+	public toString(encrypt: boolean = true, keyPair: KeyPair) {
 
 		let out: any = JSON.stringify(this);
 
 		if(encrypt) {
-			const { privateKey, publicKey } = crypto.generateKeyPairSync("rsa", {
-				modulusLength: 2048
-			});
 
 			out = crypto.publicEncrypt({
-				key: publicKey,
+				key: keyPair.public,
 				padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
 				oaepHash: "sha256"
 			}, Buffer.from(out));

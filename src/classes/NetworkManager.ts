@@ -15,7 +15,7 @@ export default class NetworkManager {
 
 	// callbacks
 	listeningCallback: Function;
-	messageCallback: Function;
+	messageCallbacks: Function[];
 	errorCallback: Function;
 
 	constructor(config: NodeConfig) {
@@ -27,7 +27,7 @@ export default class NetworkManager {
 			this.nodes = [];
 
 		this.listeningCallback = () => {};
-		this.messageCallback = () => {};
+		this.messageCallbacks = [];
 		this.errorCallback = () => {};
 
 	}
@@ -35,7 +35,7 @@ export default class NetworkManager {
 	public init(callback: Function) {
 
 		// create the socket
-		this.socket= dgram.createSocket("udp4");
+		this.socket = dgram.createSocket("udp4");
 
 		// socket error event
 		this.socket.on("error", (err: any) => {
@@ -44,7 +44,7 @@ export default class NetworkManager {
 
 		// socket message event
 		this.socket.on("message", (msg: any, rinfo: any) => {
-			this.onMessage(msg, rinfo.address, rinfo.port);
+			this.onMessage(msg.toString(), rinfo.address, rinfo.port);
 		});
 
 		// socket listening event
@@ -59,7 +59,6 @@ export default class NetworkManager {
 			exclusive: false
 		});
 
-		this.announceAlive();
 		this.announceAuth();
 
 		if(callback)
@@ -71,8 +70,8 @@ export default class NetworkManager {
 
 		this.nodes.map((node) => {
 
-			// if(node.authenticated)
-				this.socket.send(call.toString(false), node.port, node.address);
+			if(call.name == "auth" || node.authenticated)
+				this.socket.send(call.toString(false, this.nodeConfig.rsaKeyPair), node.port, node.address);
 			
 		});
 	}
@@ -108,6 +107,7 @@ export default class NetworkManager {
 		this.errorCallback(err);
 	}
 
+	// TODO: FIX AUTHENTICATION OVERWRITES AND CLEAN CODE
 	// do the known node list management
 	handleNode(call: Call, address: string, port: number) {
 
@@ -154,6 +154,9 @@ export default class NetworkManager {
 
 			this.nodes.push(node);
 
+			// reply to the new node with an auth call
+			this.announceAuth();
+
 		}
 
 		// sort by descending last time seen
@@ -168,18 +171,24 @@ export default class NetworkManager {
 
 	}
 
-	// handle the received call add call the respective callback
 	onMessage(msg: string, address: string, port: number) {
 
 		const call: Call = JSON.parse(msg);
 
 		this.handleNode(call, address, port);
 
-		switch(call.name) {
-			
-		}
+		console.log(this.nodes);
 
-		this.messageCallback(call);
+		this.nodes.map((node) => {
+
+			if(node.address == address && node.port == port && node.authenticated || true) {
+				this.messageCallbacks.map((callback: Function) => {
+					callback(call);
+				});
+			}
+
+		});
+
 	}
 
 }

@@ -1,5 +1,6 @@
 import NodeConfig from "../types/NodeConfig";
-import NetworkManager from "../classes/NetworkManager";
+import NetworkManager from "./NetworkManager";
+import StorageManager from "./StorageManager";
 import Call from "../classes/Call";
 import { v4 as uuidv4 } from "uuid";
 
@@ -7,15 +8,21 @@ import { v4 as uuidv4 } from "uuid";
 
 export default class ChainifyNode {
 
-	id: string;
 	config: NodeConfig; // node configuration
 	networkManager: NetworkManager;
+	storageManager: StorageManager;
 
 	constructor(config: NodeConfig) {
 
-		this.id = uuidv4();
 		this.config = config;
+		this.config.id = uuidv4();
+		this.config.networkAuthentication.node_id = this.config.id;
+		// this.config.networkAuthentication.publicKey = null; // set public key for authentication here
 		this.networkManager = new NetworkManager(config);
+		this.storageManager = new StorageManager();
+
+		// add the call handle function to message callbacks
+		this.networkManager.messageCallbacks.push(this.handleCall.bind(this));
 
 	}
 
@@ -53,8 +60,21 @@ export default class ChainifyNode {
 			}
 		});
 
+		// set the value on this node
+		this.storageManager.set(key, value);
+
 		// broadcast the call
 		this.networkManager.broadcastCall(call);
+	}
+
+	public handleCall(call: Call) {
+
+		switch(call.name) {
+			
+			case "set":
+				this.storageManager.set(call.extra.key, call.extra.value);
+				break;
+		}
 	}
 
 	// event called when the socket starts listening
@@ -65,7 +85,7 @@ export default class ChainifyNode {
 	// event called when a message is received 
 	// (this is only for developer usage, all the management is underlying)
 	public onCall(callback: Function) {
-		this.networkManager.messageCallback = callback;
+		this.networkManager.messageCallbacks.push(callback);
 	}
 
 }
