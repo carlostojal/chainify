@@ -7,6 +7,7 @@ import KeyPair from "../types/KeyPair";
 
 interface CallArgs {
 
+	parent?: string | null;
 	name: "get" | "set" | "auth" | "alive";
 	extra?: any;
 
@@ -24,7 +25,7 @@ export default class Call implements CallArgs {
 		
 		this.id = uuidv4();
 		this.time = new Date();
-		this.parent = null;
+		this.parent = args.parent;
 		this.name = args.name;
 		this.extra = args.extra;
 

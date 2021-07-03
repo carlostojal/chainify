@@ -86,10 +86,47 @@ export default class ChainifyNode {
 	public handleCall(call: Call) {
 
 		switch(call.name) {
+
+			case "get":
+
+				const data: any = this.storageManager.get(call.extra.key);
+
+				// if the data was found, reply with it
+				if(data) {
+
+					const newCall: Call = new Call({
+						name: "set",
+						parent: call.id,
+						extra: {
+							key: call.extra.key,
+							value: data
+						}
+					});
+
+					this.networkManager.broadcastCall(newCall);
+
+				} else {
+
+					// if it wasn't, try to get it
+
+					const newCall: Call = new Call({
+						name: "get",
+						parent: call.id,
+						extra: {
+							key: call.extra.key
+						}
+					});
+
+					this.networkManager.broadcastCall(newCall);
+				}
+				break;
 			
 			case "set":
+
 				this.storageManager.set(call.extra.key, call.extra.value);
+
 				// find if a call was waiting for this response
+				// for exemple, a get call expects a set call back
 				this.waitingCallbacks.map((waitingCall) => {
 
 					if(waitingCall.callId == call.parent)
