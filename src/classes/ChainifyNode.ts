@@ -153,15 +153,25 @@ export default class ChainifyNode {
 
 				this.storageManager.set(call.extra.key, call.extra.value);
 
-				// find if a call was waiting for this response
-				// for exemple, a get call expects a set call back
-				this.waitingCallbacks.map((waitingCall, index) => {
+				if(call.parent) {
 
-					this.waitingCallbacks.splice(index, 1);
+					// find the oldest generation, to check if this node was who started the chain call
+					let currGen: any = call.parent;
+					while(currGen.parent)
+						currGen = currGen.parent;
 
-					if(waitingCall.callId == call.parent?.id)
-						waitingCall.callback(call.extra.value);
-				});
+					// find if a call was waiting for this response
+					// for exemple, a get call expects a set call back
+
+					this.waitingCallbacks.map((waitingCall, index) => {
+
+						if(waitingCall.callId == currGen.id) {
+							this.waitingCallbacks.splice(index, 1);
+							waitingCall.callback(call.extra.value);
+						}					
+
+					});
+				}
 				break;
 		}
 	}
