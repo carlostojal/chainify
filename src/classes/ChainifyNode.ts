@@ -87,7 +87,7 @@ export default class ChainifyNode {
 		});
 
 		// set the value on this node
-		// this.storageManager.set(key, value);
+		this.storageManager.set(key, value);
 
 		// broadcast the call
 		this.networkManager.broadcastCall(call);
