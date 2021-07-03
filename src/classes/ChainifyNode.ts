@@ -127,7 +127,9 @@ export default class ChainifyNode {
 
 				// find if a call was waiting for this response
 				// for exemple, a get call expects a set call back
-				this.waitingCallbacks.map((waitingCall) => {
+				this.waitingCallbacks.map((waitingCall, index) => {
+
+					this.waitingCallbacks.splice(index, 1);
 
 					if(waitingCall.callId == call.parent)
 						waitingCall.callback(call.extra.value);
