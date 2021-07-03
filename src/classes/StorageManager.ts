@@ -9,16 +9,16 @@ export default class StorageManager {
 		this.keys = [];
 	}
 
-	public key(key: string) {
+	public get(key: string) {
 
-		this.keys.map((storageKey: StorageKey) => {
+		for(let i: number = 0; i < this.keys.length; i++) {
 
-			if(storageKey.key == key)
-				return storageKey.chain[storageKey.chain.length];
-
-		});
+			if(this.keys[i].key == key)
+				return this.keys[i].chain[this.keys[i].chain.length - 1].data;
+		}
 
 		return null;
+
 	}
 
 	public set(key: string, value: string) {

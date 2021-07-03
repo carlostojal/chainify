@@ -16,7 +16,7 @@ export default class Call implements CallArgs {
 
 	id: string; // uuid for call identification
 	time: Date; // time of the call creation
-	parent?: Call | null; // call that originated the current
+	parent?: string | null; // call that originated the current
 	name: "get" | "set" | "auth" | "alive"; // available calls
 	extra?: any | null; // extra data
 

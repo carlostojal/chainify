@@ -1,6 +1,7 @@
 import NodeConfig from "../types/NodeConfig";
 import NetworkManager from "./NetworkManager";
 import StorageManager from "./StorageManager";
+import WaitingCallback from "../types/WaitingCallback";
 import Call from "../classes/Call";
 import { v4 as uuidv4 } from "uuid";
 
@@ -11,6 +12,7 @@ export default class ChainifyNode {
 	config: NodeConfig; // node configuration
 	networkManager: NetworkManager;
 	storageManager: StorageManager;
+	waitingCallbacks: WaitingCallback[];
 
 	constructor(config: NodeConfig) {
 
@@ -24,6 +26,8 @@ export default class ChainifyNode {
 		// add the call handle function to message callbacks
 		this.networkManager.messageCallbacks.push(this.handleCall.bind(this));
 
+		this.waitingCallbacks = [];
+
 	}
 
 	public init(callback: Function) {
@@ -36,6 +40,11 @@ export default class ChainifyNode {
 	// get a item from the network
 	public getItem(key: string, callback: Function) {
 
+		// search on local storage values
+		const localValue = this.storageManager.get(key);
+		if(localValue)
+			return callback(localValue);
+
 		// create the call
 		const call: Call = new Call({
 			name: "get",
@@ -46,10 +55,17 @@ export default class ChainifyNode {
 
 		// broadcast the call
 		this.networkManager.broadcastCall(call);
+
+		// add this call to the waiting calls
+		this.waitingCallbacks.push({
+			callId: call.id,
+			callback
+		});
+		
 	}
 
 	// set a item in the network
-	public setItem(key: string, value: string, callback: Function) {
+	public setItem(key: string, value: string) {
 
 		// create the call
 		const call: Call = new Call({
@@ -73,6 +89,12 @@ export default class ChainifyNode {
 			
 			case "set":
 				this.storageManager.set(call.extra.key, call.extra.value);
+				// find if a call was waiting for this response
+				this.waitingCallbacks.map((waitingCall) => {
+
+					if(waitingCall.callId == call.parent)
+						waitingCall.callback(call.extra.value);
+				});
 				break;
 		}
 	}
