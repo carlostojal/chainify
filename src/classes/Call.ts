@@ -1,14 +1,16 @@
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import KeyPair from "../types/KeyPair";
+import Node from "../types/Node";
 
 // the call is the basic data structure used for transmission on the network
 // data encryption between parts is implemented here
 
 interface CallArgs {
 
-	parent?: string | null;
-	name: "get" | "set" | "auth" | "alive";
+	parent?: Call | null;
+	caller: Node;
+	name: "get" | "set" | "auth" | "alive" | "ping";
 	extra?: any;
 
 }
@@ -17,8 +19,9 @@ export default class Call implements CallArgs {
 
 	id: string; // uuid for call identification
 	time: Date; // time of the call creation
-	parent?: string | null; // call that originated the current
-	name: "get" | "set" | "auth" | "alive"; // available calls
+	parent?: Call | null; // call that originated the current
+	caller: Node;
+	name: "get" | "set" | "auth" | "alive" | "ping"; // available calls
 	extra?: any | null; // extra data
 
 	constructor(args: CallArgs) {
@@ -26,6 +29,7 @@ export default class Call implements CallArgs {
 		this.id = uuidv4();
 		this.time = new Date();
 		this.parent = args.parent;
+		this.caller = args.caller;
 		this.name = args.name;
 		this.extra = args.extra;
 

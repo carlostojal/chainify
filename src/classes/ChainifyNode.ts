@@ -48,6 +48,11 @@ export default class ChainifyNode {
 		// create the call
 		const call: Call = new Call({
 			name: "get",
+			caller: {
+				id: this.config.id,
+				address: this.config.host,
+				port: this.config.port
+			},
 			extra: {
 				key
 			}
@@ -70,6 +75,11 @@ export default class ChainifyNode {
 		// create the call
 		const call: Call = new Call({
 			name: "set",
+			caller: {
+				id: this.config.id,
+				address: this.config.host,
+				port: this.config.port
+			},
 			extra: {
 				key,
 				value
@@ -77,7 +87,7 @@ export default class ChainifyNode {
 		});
 
 		// set the value on this node
-		this.storageManager.set(key, value);
+		// this.storageManager.set(key, value);
 
 		// broadcast the call
 		this.networkManager.broadcastCall(call);
@@ -96,14 +106,27 @@ export default class ChainifyNode {
 
 					const newCall: Call = new Call({
 						name: "set",
-						parent: call.id,
+						parent: call,
+						caller: {
+							id: this.config.id,
+							address: this.config.host,
+							port: this.config.port
+						},
 						extra: {
 							key: call.extra.key,
 							value: data
 						}
 					});
 
+					// broadcast the call to all known nodes, to optimize the network data retrieval chance and speed
 					this.networkManager.broadcastCall(newCall);
+
+					// iterate call generations and reply to the oldest (the one that started the call chain)
+					let currGen: any = call;
+					while(currGen.parent)
+						currGen = currGen.parent;
+
+					this.networkManager.sendCall(newCall, currGen.caller);
 
 				} else {
 
@@ -111,7 +134,12 @@ export default class ChainifyNode {
 
 					const newCall: Call = new Call({
 						name: "get",
-						parent: call.id,
+						parent: call,
+						caller: {
+							id: this.config.id,
+							address: this.config.host,
+							port: this.config.port
+						},
 						extra: {
 							key: call.extra.key
 						}
@@ -131,7 +159,7 @@ export default class ChainifyNode {
 
 					this.waitingCallbacks.splice(index, 1);
 
-					if(waitingCall.callId == call.parent)
+					if(waitingCall.callId == call.parent?.id)
 						waitingCall.callback(call.extra.value);
 				});
 				break;

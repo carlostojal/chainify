@@ -65,6 +65,13 @@ export default class NetworkManager {
 			callback(this.nodeConfig);
 	}
 
+	// send the call to a specific node
+	public sendCall(call: Call, node: Node) {
+
+		// send the call to the specified node
+		this.socket.send(call.toString(false, this.nodeConfig.rsaKeyPair), node.port, node.address);
+	}
+
 	// broadcast the call to all known nodes
 	public broadcastCall(call: Call) {
 
@@ -80,7 +87,16 @@ export default class NetworkManager {
 	announceAlive() {
 
 		const call: Call = new Call({
-			name: "alive"
+			name: "alive",
+			caller: {
+				id: this.nodeConfig.id,
+				address: this.nodeConfig.host,
+				port: this.nodeConfig.port
+			},
+			extra: {
+				node_id: this.nodeConfig.id,
+				public_key: this.nodeConfig.rsaKeyPair.public.toString()
+			}
 		});
 
 		this.broadcastCall(call);
@@ -91,6 +107,11 @@ export default class NetworkManager {
 
 		const call: Call = new Call({
 			name: "auth",
+			caller: {
+				id: this.nodeConfig.id,
+				address: this.nodeConfig.host,
+				port: this.nodeConfig.port
+			},
 			extra: this.nodeConfig.networkAuthentication
 		});
 
@@ -108,14 +129,14 @@ export default class NetworkManager {
 	}
 
 	// do the known node list management
-	handleNode(call: Call, address: string, port: number) {
+	handleNode(call: Call | null, address: string, port: number) {
 
 		let nodeIsKnown: boolean = false;
 
 		let authIsValid: boolean = false;
 
 		// verify auth
-		if(call.name == "auth") {
+		if(call && call.name == "auth") {
 
 			try {
 				const auth: NetworkAuthentication = call.extra;
@@ -140,7 +161,7 @@ export default class NetworkManager {
 				node.lastTimeSeen = new Date();
 
 				// only update the auth if the call was an auth call
-				if(call.name == "auth")
+				if(call && call.name == "auth")
 					node.authenticated = authIsValid;
 
 			}
@@ -178,12 +199,15 @@ export default class NetworkManager {
 
 	}
 
+	// every communication received is handled from here
 	onMessage(msg: string, address: string, port: number) {
 
 		const call: Call = JSON.parse(msg);
 
+		// this will add the node to the known list, handle authentication attempts, etc.
 		this.handleNode(call, address, port);
 
+		// only handle messages from authenticated nodes
 		this.nodes.map((node) => {
 
 			if(node.address == address && node.port == port && node.authenticated || true) {
