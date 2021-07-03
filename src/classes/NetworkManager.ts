@@ -107,19 +107,19 @@ export default class NetworkManager {
 		this.errorCallback(err);
 	}
 
-	// TODO: FIX AUTHENTICATION OVERWRITES AND CLEAN CODE
 	// do the known node list management
 	handleNode(call: Call, address: string, port: number) {
 
 		let nodeIsKnown: boolean = false;
 
-		let isAuthAndVerified = false;
+		let authIsValid: boolean = false;
+
+		// verify auth
 		if(call.name == "auth") {
 
 			try {
 				const auth: NetworkAuthentication = call.extra;
-				isAuthAndVerified = call.name == "auth" &&
-					auth.name == this.nodeConfig.networkAuthentication.name &&
+				authIsValid = auth.name == this.nodeConfig.networkAuthentication.name &&
 					auth.secret == this.nodeConfig.networkAuthentication.secret;
 
 			} catch(e) {
@@ -127,39 +127,46 @@ export default class NetworkManager {
 			}
 
 		}
-			
+
 		// handle remote info
 		this.nodes.map((node: Node) => {
 			
+			// node was already known, only update the last time seen
 			if(node.address == address && node.port == port) {
 
 				nodeIsKnown = true;
 
 				// update node last time seen
 				node.lastTimeSeen = new Date();
-				node.authenticated = isAuthAndVerified;
+
+				// only update the auth if the call was an auth call
+				if(call.name == "auth")
+					node.authenticated = authIsValid;
 
 			}
 
 		});
 
+		// the node was not known, add it
 		if(!nodeIsKnown) {
 
 			const node: Node = {
 				address: address,
 				port: port,
 				lastTimeSeen: new Date(),
-				authenticated: isAuthAndVerified
+				authenticated: authIsValid
 			};
 
 			this.nodes.push(node);
 
-			// reply to the new node with an auth call
+			// reply to all nodes, including the new one, with an auth call
 			this.announceAuth();
 
 		}
 
 		// sort by descending last time seen
+		// this way, when iterating the list
+		// the most likely online nodes are prioritized
 		this.nodes.sort((a: Node, b: Node) => {
 
 			if(a.lastTimeSeen && b.lastTimeSeen)
@@ -176,8 +183,6 @@ export default class NetworkManager {
 		const call: Call = JSON.parse(msg);
 
 		this.handleNode(call, address, port);
-
-		console.log(this.nodes);
 
 		this.nodes.map((node) => {
 
