@@ -93,7 +93,7 @@ export default class ChainifyNode {
 		this.networkManager.broadcastCall(call);
 	}
 
-	public handleCall(call: Call) {
+	handleCall(call: Call) {
 
 		switch(call.name) {
 

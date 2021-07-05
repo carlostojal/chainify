@@ -129,7 +129,7 @@ export default class NetworkManager {
 	}
 
 	// do the known node list management
-	handleNode(call: Call | null, address: string, port: number) {
+	handleNode(call: Call, address: string, port: number) {
 
 		let nodeIsKnown: boolean = false;
 
@@ -172,6 +172,7 @@ export default class NetworkManager {
 		if(!nodeIsKnown) {
 
 			const node: Node = {
+				id: call.extra.node_id,
 				address: address,
 				port: port,
 				lastTimeSeen: new Date(),
@@ -199,6 +200,26 @@ export default class NetworkManager {
 
 	}
 
+	// this trusts all the nodes involved in a call chain
+	// all nodes in the chain can be thrusted, and  
+	// this node now knows the existence of these nodes and thrusts them
+	trustChain(call: Call) {
+
+		let currGen: Call = call;
+		while(currGen.parent) {
+			// if the array doesn't contain this node
+			if(!this.nodes.some((node: Node) => node.id === currGen.caller.id))
+				this.nodes.push({
+					id: currGen.caller.id,
+					address: currGen.caller.address,
+					port: currGen.caller.port,
+					authenticated: true
+				});
+			// regress to the previous generation
+			currGen = currGen.parent;
+		}
+	}
+
 	// every communication received is handled from here
 	onMessage(msg: string, address: string, port: number) {
 
@@ -206,6 +227,9 @@ export default class NetworkManager {
 
 		// this will add the node to the known list, handle authentication attempts, etc.
 		this.handleNode(call, address, port);
+
+		// trust all nodes involved in the call
+		this.trustChain(call);
 
 		// only handle messages from authenticated nodes
 		this.nodes.map((node) => {
