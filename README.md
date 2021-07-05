@@ -47,6 +47,8 @@ node.getItem("users", (users) => {
 });
 ```
 
+There is a complete REST API example using "chainify" as database available [here]("https://github.com/carlostojal/chainify-demo").
+
 ## Configuration Explanation
 
 - ### ```alwaysActiveNodes```
@@ -64,3 +66,5 @@ node.getItem("users", (users) => {
 ## Disclaimer
 
 This is a work under progress. This module is far from complete/working yet.
+
+Contributions are welcome, go ahead and open issues/pull requests.

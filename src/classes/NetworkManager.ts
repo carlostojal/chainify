@@ -120,7 +120,7 @@ export default class NetworkManager {
 
 	// call the listening callback
 	onListening() {
-		this.listeningCallback();
+		this.listeningCallback(this.nodeConfig);
 	}
 
 	// call the error callback
