@@ -1,6 +1,6 @@
 {
   "name": "@carlostojal/chainify",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Chainify is a SDK and protocol specification for key-storage peer-to-peer networks creation.",
   "main": "./dist/index.js",
   "type": "commonjs",

@@ -47,7 +47,7 @@ node.getItem("users", (users) => {
 });
 ```
 
-There is a complete REST API example using "chainify" as database available [here]("https://github.com/carlostojal/chainify-demo").
+There is a complete REST API example using "chainify" as database available [here](https://github.com/carlostojal/chainify-demo).
 
 ## Configuration Explanation
 
