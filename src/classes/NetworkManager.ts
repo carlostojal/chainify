@@ -13,9 +13,12 @@ export default class NetworkManager {
 	nodes: Node[];
 	nodeConfig: NodeConfig;
 
+	processedCallIds: string[];
+
 	// callbacks
 	listeningCallback: Function;
 	messageCallbacks: Function[];
+	outgoingMessageCallback: Function;
 	errorCallback: Function;
 
 	constructor(config: NodeConfig) {
@@ -26,8 +29,11 @@ export default class NetworkManager {
 		else
 			this.nodes = [];
 
+		this.processedCallIds = [];
+
 		this.listeningCallback = () => {};
 		this.messageCallbacks = [];
+		this.outgoingMessageCallback = () => {};
 		this.errorCallback = () => {};
 
 	}
@@ -44,7 +50,12 @@ export default class NetworkManager {
 
 		// socket message event
 		this.socket.on("message", (msg: any, rinfo: any) => {
-			this.onMessage(msg.toString(), rinfo.address, rinfo.port);
+			try {
+				this.onMessage(msg.toString(), rinfo.address, rinfo.port);
+			} catch(e) {
+				throw e;
+				throw new Error("Error handling incoming call.");
+			}
 		});
 
 		// socket listening event
@@ -68,8 +79,12 @@ export default class NetworkManager {
 	// send the call to a specific node
 	public sendCall(call: Call, node: Node) {
 
+		this.processedCallIds.push(call.id);
+
 		// send the call to the specified node
-		this.socket.send(call.toString(false, this.nodeConfig.rsaKeyPair), node.port, node.address);
+		this.socket.send(JSON.stringify(call), node.port, node.address);
+
+		this.outgoingMessageCallback(call, node);
 	}
 
 	// broadcast the call to all known nodes
@@ -77,8 +92,7 @@ export default class NetworkManager {
 
 		this.nodes.map((node) => {
 
-			if(call.name == "auth" || node.authenticated)
-				this.socket.send(call.toString(false, this.nodeConfig.rsaKeyPair), node.port, node.address);
+			this.sendCall(call, node);
 			
 		});
 	}
@@ -118,6 +132,22 @@ export default class NetworkManager {
 		this.broadcastCall(call);
 	}
 
+	// send an auth call to a specific node
+	sendAuth(node: Node) {
+
+		const call: Call = new Call({
+			name: "auth",
+			caller: {
+				id: this.nodeConfig.id,
+				address: this.nodeConfig.host,
+				port: this.nodeConfig.port
+			},
+			extra: this.nodeConfig.networkAuthentication
+		});
+
+		this.sendCall(call, node);
+	}
+
 	// call the listening callback
 	onListening() {
 		this.listeningCallback(this.nodeConfig);
@@ -131,72 +161,58 @@ export default class NetworkManager {
 	// do the known node list management
 	handleNode(call: Call, address: string, port: number) {
 
-		let nodeIsKnown: boolean = false;
 
-		let authIsValid: boolean = false;
+		if(call.name === "auth") {
 
-		// verify auth
-		if(call && call.name == "auth") {
+			let nodeExists: boolean = false;
+			let validAuth = call.extra.name === this.nodeConfig.networkAuthentication.name &&
+				call.extra.secret === this.nodeConfig.networkAuthentication.secret;
 
-			try {
-				const auth: NetworkAuthentication = call.extra;
-				authIsValid = auth.name == this.nodeConfig.networkAuthentication.name &&
-					auth.secret == this.nodeConfig.networkAuthentication.secret;
+			this.nodes.map((node: Node) => {
+				// find the node and update
+				if(node.address == address && node.port == port) {
+					nodeExists = true;
+					node.lastTimeSeen = new Date();
+				}
 
-			} catch(e) {
+			});
+
+			// this is the first time this node knows of the other
+			if(validAuth) {
+
+				if(!nodeExists) {
+
+					// add to the list
+					this.nodes.push({
+						id: call.extra.node_id,
+						address,
+						port,
+						authenticated: true
+					});
+
+					// send him an auth call back
+					this.sendAuth({
+						address,
+						port
+					});
+
+				}
 
 			}
 
-		}
+			// sort by descending last time seen
+			// this way, when iterating the list
+			// the most likely online nodes are prioritized
+			this.nodes.sort((a: Node, b: Node) => {
 
-		// handle remote info
-		this.nodes.map((node: Node) => {
-			
-			// node was already known, only update the last time seen
-			if(node.address == address && node.port == port) {
+				if(a.lastTimeSeen && b.lastTimeSeen)
+					return b.lastTimeSeen.getTime() - a.lastTimeSeen.getTime();
+				
+				return 0;
 
-				nodeIsKnown = true;
+			});
 
-				// update node last time seen
-				node.lastTimeSeen = new Date();
-
-				// only update the auth if the call was an auth call
-				if(call && call.name == "auth")
-					node.authenticated = authIsValid;
-
-			}
-
-		});
-
-		// the node was not known, add it
-		if(!nodeIsKnown) {
-
-			const node: Node = {
-				id: call.extra.node_id,
-				address: address,
-				port: port,
-				lastTimeSeen: new Date(),
-				authenticated: authIsValid
-			};
-
-			this.nodes.push(node);
-
-			// reply to all nodes, including the new one, with an auth call
-			this.announceAuth();
-
-		}
-
-		// sort by descending last time seen
-		// this way, when iterating the list
-		// the most likely online nodes are prioritized
-		this.nodes.sort((a: Node, b: Node) => {
-
-			if(a.lastTimeSeen && b.lastTimeSeen)
-				return b.lastTimeSeen.getTime() - a.lastTimeSeen.getTime();
-			
-			return 0;
-
-		});
+		}	
 
 	}
 
@@ -228,20 +244,41 @@ export default class NetworkManager {
 		// this will add the node to the known list, handle authentication attempts, etc.
 		this.handleNode(call, address, port);
 
-		// trust all nodes involved in the call
-		this.trustChain(call);
 
-		// only handle messages from authenticated nodes
-		this.nodes.map((node) => {
+		// always handle auth calls
+		if(call.name == "auth") {
 
-			if(node.address == address && node.port == port && node.authenticated || true) {
-				this.messageCallbacks.map((callback: Function) => {
-					callback(call);
+			this.messageCallbacks.map((callback: Function) => {
+				callback(call, {address, port});
+			});
+
+		} else {
+
+			if(!this.processedCallIds.includes(call.id)) {
+
+				this.processedCallIds.push(call.id);
+
+				// only handle message if the node is authenticated
+				this.nodes.map((node) => {
+
+					if((node.address == address && node.port == port)) {
+
+						if(node.authenticated) {
+
+							// trust all nodes involved in the call
+							this.trustChain(call);
+						
+							this.messageCallbacks.map((callback: Function) => {
+								callback(call, {address, port});
+							});
+
+						}
+
+					}
+
 				});
 			}
-
-		});
-
+		}
 	}
 
 }
