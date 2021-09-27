@@ -22,7 +22,7 @@ export default class Call implements CallArgs {
 	parent?: Call | null; // call that originated the current
 	caller: Node;
 	name: "get" | "set" | "auth" | "alive" | "ping"; // available calls
-	extra?: any | null; // extra data
+	extra: any | null; // extra data
 
 	constructor(args: CallArgs) {
 		

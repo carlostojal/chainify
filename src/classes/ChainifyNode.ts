@@ -93,7 +93,7 @@ export default class ChainifyNode {
 		this.networkManager.broadcastCall(call);
 	}
 
-	public handleCall(call: Call) {
+	handleCall(call: Call) {
 
 		switch(call.name) {
 
@@ -172,6 +172,10 @@ export default class ChainifyNode {
 
 					});
 				}
+
+				// redirect the call
+				this.networkManager.broadcastCall(call);
+
 				break;
 		}
 	}
@@ -185,6 +189,10 @@ export default class ChainifyNode {
 	// (this is only for developer usage, all the management is underlying)
 	public onCall(callback: Function) {
 		this.networkManager.messageCallbacks.push(callback);
+	}
+
+	public onCallSend(callback: Function) {
+		this.networkManager.outgoingMessageCallback = callback;
 	}
 
 }

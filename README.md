@@ -1,10 +1,10 @@
 # chainify
 
-The blockchain and peer-to-peer networks represent a revolution in today's information systems.
+Decentralized peer-to-peer networks represent a revolution in today's information systems.
 With that in mind, providing easy ways to implement this technologies is essential.
-Chainify appears as the solution to this problem, by providing a framework and a protocol specification for peer-to-peer networks creation based on the blockchain technology.
+Chainify appears as the solution to this problem, by providing a framework and a protocol specification for peer-to-peer networks creation.
 Each Chainify machine is a network node.
-A Chainify network is like a key-value storage distributed among all nodes with the integrity, security and transparency that the blockchain provides.
+A Chainify network is like a key-value storage distributed among all nodes.
 
 ## Usage
 
@@ -47,6 +47,8 @@ node.getItem("users", (users) => {
 });
 ```
 
+There is a complete REST API example using "chainify" as database available [here](https://github.com/carlostojal/chainify-demo).
+
 ## Configuration Explanation
 
 - ### ```alwaysActiveNodes```
@@ -64,3 +66,5 @@ node.getItem("users", (users) => {
 ## Disclaimer
 
 This is a work under progress. This module is far from complete/working yet.
+
+Contributions are welcome, go ahead and open issues/pull requests.

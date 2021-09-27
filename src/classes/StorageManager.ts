@@ -1,5 +1,4 @@
 import StorageKey from "../types/StorageKey";
-import Block from "./Block";
 
 export default class StorageManager {
 
@@ -14,7 +13,7 @@ export default class StorageManager {
 		for(let i: number = 0; i < this.keys.length; i++) {
 
 			if(this.keys[i].key == key)
-				return this.keys[i].chain[this.keys[i].chain.length - 1].data;
+				return this.keys[i].value;
 		}
 
 		return null;
@@ -29,7 +28,7 @@ export default class StorageManager {
 			
 			if(storageKey.key == key) {
 				keyExists = true;
-				storageKey.chain.push(new Block(storageKey.chain[storageKey.chain.length - 1].hash, value));
+				storageKey.value = value;
 			}
 
 		});
@@ -38,10 +37,11 @@ export default class StorageManager {
 
 			let newKey: StorageKey = {
 				key,
-				chain: [new Block(null, value)]
+				value
 			};
 
 			this.keys.push(newKey);
 		}
+
 	}
 }
